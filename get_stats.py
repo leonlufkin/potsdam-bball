@@ -298,17 +298,20 @@ if __name__ == '__main__':
 
     ft_weight = 0.5 # 0.44
     for game, stat in stats.items():
+        # per 32 stats
+        if game == 0:
+            stat_per_32 = 32 * stat[stat.columns.drop(list(stat.filter(regex='per game')))].drop(columns=['name', 'playtime']).div(stat['playtime'], axis=0)
+        else:
+            stat_per_32 = 32 * stat.drop(columns=['name', 'playtime', 'game']).div(stat['playtime'], axis=0)
+        stat_per_32 = stat_per_32.add_suffix(" per 32")
+        stat[stat_per_32.columns] = stat_per_32
+
         # percentage stats
         stat['2p %'] = 100 * stat['made 2p'] / stat['att 2p']
         stat['3p %'] = 100 * stat['made 3p'] / stat['att 3p']
         stat['fg %'] = 100 * stat['made fg'] / stat['att fg']
         stat['ft %'] = 100 * stat['made ft'] / stat['att ft']
         stat['TS %'] = 100 * stat['pts scored']/2/(stat['att fg'] + ft_weight*stat['att ft'])
-
-        # per 32 stats
-        stat['+/- per 32'] = 32 * stat['+/-'] / stat['playtime']
-        stat['made ft'] = stat['']
-        stat['possessions per 32'] = 32 * stat['possessions'] / stat['playtime']
         
         # advanced stats
         stat['PER'] = (stat['made fg']*85.910 + stat['steals']*53.897 + stat['made 3p']*51.757 + stat['made ft']*46.845 + stat['blocks']*39.190 + stat['rebounds']*18.7875 + stat['assists']*34.677 - (stat['att ft']-stat['made ft'])*20.091 - (stat['att fg']-stat['made fg'])*20.091 - stat['turnovers']) / stat['playtime']
