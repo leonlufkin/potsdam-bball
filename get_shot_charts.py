@@ -12,7 +12,6 @@ if __name__ == '__main__':
     for name in names:
         player_shots = shot_chart[name].dropna()
         player_shots = player_shots[player_shots != "AND ONE"].apply(lambda x: x.strip().split(" "))
-        player_shots.values()
         player_shots = pd.DataFrame.from_dict(dict(zip(player_shots.index, player_shots.values))).T.reset_index(drop=True).rename(columns={0: 'region', 1: 'type'})
         player_shots['region'] = player_shots['region'].astype(int)
         # FIX THE FOLLOWING LINE TO HANDLE FREE THROWS!

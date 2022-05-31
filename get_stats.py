@@ -313,11 +313,32 @@ if __name__ == '__main__':
         stat['ft %'] = 100 * stat['made ft'] / stat['att ft']
         stat['TS %'] = 100 * stat['pts scored']/2/(stat['att fg'] + ft_weight*stat['att ft'])
         
-        # advanced stats
+        # advanced stats using individual data
         stat['PER'] = (stat['made fg']*85.910 + stat['steals']*53.897 + stat['made 3p']*51.757 + stat['made ft']*46.845 + stat['blocks']*39.190 + stat['rebounds']*18.7875 + stat['assists']*34.677 - (stat['att ft']-stat['made ft'])*20.091 - (stat['att fg']-stat['made fg'])*20.091 - stat['turnovers']) / stat['playtime']
 
-        # stats using whole team's data
+        # advanced stats using whole team's data
         stat['usage rate'] = 100 * ((stat['att fg'] + ft_weight*stat['att ft'] + stat['turnovers']) * (stat['playtime'].sum() / 5)) / ((stat['att fg'].sum() + ft_weight*stat['att ft'].sum() + stat['turnovers'].sum()) * stat['playtime'])
+        
+        Team_Scoring_Poss = stat['made fg'].sum() + (1 - (1 - (stat['made ft'].sum() / stat['att ft'].sum()))**2) * stat['att ft'].sum() * 0.4
+        Team_Play_percentage = Team_Scoring_Poss / (stat['att fg'].sum() + stat['att ft'].sum() * 0.4 + stat['turnovers'].sum())
+        Team_ORB_percentage = 0.25
+        Team_ORB_Weight = ((1 - Team_ORB_percentage) * Team_Play_percentage) / ((1 - Team_ORB_percentage) * Team_Play_percentage + Team_ORB_percentage * (1 - Team_Play_percentage))
+        ORB_Part = (stat['rebounds']/5) * Team_ORB_Weight * stat['playtime'].sum()
+        FT_Part = (1-(1-(stat['made ft']/stat['att ft']))**2)*0.4*stat['att ft']
+        AST_Part = 0.5 * (((stat['pts scored'].sum() - stat['made ft'].sum()) - (stat['pts scored'] - stat['made ft'])) / (2 * (stat['att fg'].sum() - stat['att fg']))) * stat['assists']
+        qAST = ((stat['playtime'] / (stat['playtime'].sum() / 5)) * (1.14 * ((stat['assists'].sum() - stat['assists']) / stat['made fg'].sum()))) + ((((stat['assists'].sum() / stat['playtime'].sum()) * stat['playtime'] * 5 - stat['assists']) / ((stat['made fg'].sum() / stat['playtime'].sum()) * stat['playtime'] * 5 - stat['made fg'])) * (1 - (stat['playtime'] / (stat['playtime'].sum() / 5))))
+        FG_Part = stat['made fg'] * (1 - 0.5 * ((stat['pts scored'] - stat['made ft']) / (2 * stat['att fg'])) * qAST)
+        ScPoss = (FG_Part + AST_Part + FT_Part) * (1 - ((stat['rebounds'].sum()/5) / Team_Scoring_Poss) * Team_ORB_Weight * Team_Play_percentage) + ORB_Part
+        FGxPoss = (stat['att fg'] - stat['made fg']) * (1 - 1.07 * Team_ORB_percentage)
+        FTxPoss = ((1 - (stat['made ft'] / stat['att ft']))**2) * 0.4 * stat['att ft']
+        TotPoss = ScPoss + FGxPoss + FTxPoss + stat['turnovers']
+
+        PProd_FG_Part = 2 * (stat['made fg'] + 0.5 * stat['made 3p']) * (1 - 0.5 * ((stat['pts scored'] - stat['made ft']) / (2 * stat['att fg'])) * qAST)
+        PProd_AST_Part = 2 * ((stat['made fg'].sum() - stat['made fg'] + 0.5 * (stat['made 3p'].sum() - stat['made 3p'])) / (stat['made fg'].sum() - stat['made fg'])) * 0.5 * (((stat['pts scored'].sum() - stat['made ft'].sum()) - (stat['pts scored'] - stat['made ft'])) / (2 * (stat['att fg'].sum() - stat['att fg']))) * stat['assists']
+        PProd_ORB_Part = (stat['rebounds']/5) * Team_ORB_Weight * Team_Play_percentage * (stat['pts scored'].sum() / (stat['made fg'].sum() + (1 - (1 - (stat['made ft'].sum() / stat['att ft'].sum()))**2) * 0.4 * stat['att ft'].sum()))
+        PProd = (PProd_FG_Part + PProd_AST_Part + stat['made ft']) * (1 - ((stat['rebounds'].sum()/5)  / Team_Scoring_Poss) * Team_ORB_Weight * Team_Play_percentage) + PProd_ORB_Part
+        stat['OR'] = 100 * (PProd / TotPoss)
+        stat['floor %'] = 100 * ScPoss / TotPoss
 
     writer = pd.ExcelWriter(mkdir('results/') + args.data_file.split('/')[-1].replace('.csv', '.xlsx'), engine='openpyxl')
     for game, stat in stats.items():
